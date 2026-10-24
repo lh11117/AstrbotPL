@@ -68,7 +68,101 @@ def search(keyword):
     # 转成普通 dict 便于模板渲染
     result = {city: dict(lines) for city, lines in result.items()}
     logger.info(f"key {keyword}; result: {result}")
-    return result
+        # ---------- 2. Jinja2 模板 ----------
+    html_template = """
+    <!DOCTYPE html>
+    <html lang="zh-CN">
+    <head>
+    <meta charset="UTF-8">
+    <style>
+    body {
+        font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+        background: #f5f6f8;
+        margin: 0;
+        padding: 24px;
+        color: #222;
+    }
+    h1 {
+        font-size: 22px;
+        margin: 0 0 18px;
+        color: #1a1a1a;
+    }
+    .keyword { color: #d0021b; }
+    .city {
+        background: #fff;
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin-bottom: 16px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .city-name {
+        font-size: 18px;
+        font-weight: bold;
+        margin-bottom: 12px;
+        border-left: 4px solid #d0021b;
+        padding-left: 10px;
+    }
+    .line {
+        display: flex;
+        align-items: flex-start;
+        margin: 8px 0;
+    }
+    .line-name {
+        flex: 0 0 160px;
+        font-weight: 600;
+        padding: 3px 10px;
+        border-radius: 4px;
+        color: #fff;
+        font-size: 13px;
+        text-align: center;
+    }
+    .stations {
+        flex: 1;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding-left: 12px;
+    }
+    .station {
+        background: #eef1f5;
+        border-radius: 14px;
+        padding: 3px 12px;
+        font-size: 13px;
+    }
+    .empty {
+        color: #888;
+        font-size: 16px;
+    }
+    </style>
+    </head>
+    <body>
+    <h1>站名包含 <span class="keyword">“{{ keyword }}”</span> 的线路与车站</h1>
+    {% if result %}
+        {% for city, lines in result.items() %}
+        <div class="city">
+            <div class="city-name">{{ city }}</div>
+            {% for line_name, info in lines.items() %}
+            <div class="line">
+                <div class="line-name" style="background:#{{ info.color }};">{{ line_name }}</div>
+                <div class="stations">
+                {% for s in info.stations %}
+                    <span class="station">{{ s }}</span>
+                {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty">未找到包含“{{ keyword }}”的站名。</div>
+    {% endif %}
+    </body>
+    </html>
+    """
+
+    template = Template(html_template)
+    html = template.render(keyword=keyword, result=result)
+    return html
 
 
 
@@ -91,101 +185,12 @@ class MetroSearch(Star):
             return
         options = {}  # 可选择传入渲染选项。
         try:
-            result = search(key.strip())
+            result_html = search(key.strip())
         except:
             yield event.plain_result("查询失败")
         else:
-            url = await self.html_render(
-                """
-        <!DOCTYPE html>
-        <html lang="zh-CN">
-        <head>
-        <meta charset="UTF-8">
-        <style>
-        body {
-            font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
-            background: #f5f6f8;
-            margin: 0;
-            padding: 24px;
-            color: #222;
-        }
-        h1 {
-            font-size: 22px;
-            margin: 0 0 18px;
-            color: #1a1a1a;
-        }
-        .keyword { color: #d0021b; }
-        .city {
-            background: #fff;
-            border-radius: 10px;
-            padding: 16px 20px;
-            margin-bottom: 16px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-        }
-        .city-name {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 12px;
-            border-left: 4px solid #d0021b;
-            padding-left: 10px;
-        }
-        .line {
-            display: flex;
-            align-items: flex-start;
-            margin: 8px 0;
-        }
-        .line-name {
-            flex: 0 0 160px;
-            font-weight: 600;
-            padding: 3px 10px;
-            border-radius: 4px;
-            color: #fff;
-            font-size: 13px;
-            text-align: center;
-        }
-        .stations {
-            flex: 1;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            padding-left: 12px;
-        }
-        .station {
-            background: #eef1f5;
-            border-radius: 14px;
-            padding: 3px 12px;
-            font-size: 13px;
-        }
-        .empty {
-            color: #888;
-            font-size: 16px;
-        }
-        </style>
-        </head>
-        <body>
-        <h1>站名包含 <span class="keyword">“{{ keyword }}”</span> 的线路与车站</h1>
-        {% if result %}
-            {% for city, lines in result.items() %}
-            <div class="city">
-                <div class="city-name">{{ city }}</div>
-                {% for line_name, info in lines.items() %}
-                <div class="line">
-                    <div class="line-name" style="background:#{{ info.color }};">{{ line_name }}</div>
-                    <div class="stations">
-                    {% for s in info.stations %}
-                        <span class="station">{{ s }}</span>
-                    {% endfor %}
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-            {% endfor %}
-        {% else %}
-            <div class="empty">未找到包含“{{ keyword }}”的站名。</div>
-        {% endif %}
-        </body>
-        </html>
-        """, result, options=options
+            url = await self.html_render(result_html,
+                {}, options=options
             )  # 第二个参数是 Jinja2 的渲染数据
             yield event.image_result(url)
             
