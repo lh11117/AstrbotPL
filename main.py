@@ -1,24 +1,73 @@
-from astrbot.api.event import filter, AstrMessageEvent, MessageEventResult
+from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star, register
 from astrbot.api import logger
+import re
 
-@register("helloworld", "YourName", "一个简单的 Hello World 插件", "1.0.0")
-class MyPlugin(Star):
+
+@register("group_mute", "YourName", "群聊禁言示例插件", "1.0.0")
+class GroupMutePlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
 
-    async def initialize(self):
-        """可选择实现异步的插件初始化方法，当实例化该插件类之后会自动调用该方法。"""
+    @filter.command("禁言")
+    async def mute(self, event: AstrMessageEvent, duration: int = 60):
+        """
+        用法：/禁言 <秒数>（需要 @ 某人）
+        例：/禁言 300 @张三
+        """
+        # 1. 确认是群聊
+        if not event.get_group_id():
+            yield event.plain_result("这个指令只能在群聊里用哦～")
+            return
 
-    # 注册指令的装饰器。指令名为 helloworld。注册成功后，发送 `/helloworld` 就会触发这个指令，并回复 `你好, {user_name}!`
-    @filter.command("helloworld")
-    async def helloworld(self, event: AstrMessageEvent):
-        """这是一个 hello world 指令""" # 这是 handler 的描述，将会被解析方便用户了解插件内容。建议填写。
-        user_name = event.get_sender_name()
-        message_str = event.message_str # 用户发的纯文本消息字符串
-        message_chain = event.get_messages() # 用户所发的消息的消息链 # from astrbot.api.message_components import *
-        logger.info(message_chain)
-        yield event.plain_result(f"Hello, {user_name}, 你发了 {message_str}!") # 发送一条纯文本消息
+        group_id = event.get_group_id()
 
-    async def terminate(self):
-        """可选择实现异步的插件销毁方法，当插件被卸载/停用时会调用。"""
+        # 2. 从消息链里找到被 @ 的人
+        target_id = None
+        match = re.search(r'attinyid=(\d+)', event.message_str)
+        if match:
+            target_id = match.group(1)
+                
+
+        if target_id is None:
+            yield event.plain_result("请 @ 要禁言的人，例如：/禁言 300 @张三")
+            return
+
+        # 3. 调用平台 API 禁言
+        try:
+            await event.bot.set_group_ban(
+                group_id=int(group_id),
+                user_id=target_id,
+                duration=duration,   # 单位：秒
+            )
+            yield event.plain_result(f"已禁言 {duration} 秒 ✅")
+        except Exception as e:
+            logger.error(f"禁言失败: {e}")
+            yield event.plain_result(f"禁言失败：{e}")
+
+    @filter.command("解禁")
+    async def unmute(self, event: AstrMessageEvent):
+        """用法：/解禁 @某人"""
+        if not event.get_group_id():
+            yield event.plain_result("只能在群聊使用")
+            return
+
+        target_id = None
+        for comp in event.get_messages():
+            if comp.__class__.__name__ == "At" and comp.qq != "all":
+                target_id = int(comp.qq)
+                break
+
+        if target_id is None:
+            yield event.plain_result("请 @ 要解禁的人")
+            return
+
+        try:
+            await event.bot.set_group_ban(
+                group_id=int(event.get_group_id()),
+                user_id=target_id,
+                duration=0,          # 0 = 解除禁言
+            )
+            yield event.plain_result("已解除禁言 ✅")
+        except Exception as e:
+            yield event.plain_result(f"解禁失败：{e}")
