@@ -29,7 +29,7 @@ class GroupMutePlugin(Star):
             target_id = match.group(1)
                 
         if target_id is None:
-            yield event.plain_result(f"请 @ 要禁言的人，例如：/禁言 300 @张三(\n{event.message_str}\n)")
+            yield event.plain_result(f"请 @ 要禁言的人，例如：/禁言 300 @张三(\n{event.message_str.replace('[','【')}\n)")
             return
 
         # 3. 调用平台 API 禁言
