@@ -28,7 +28,6 @@ class GroupMutePlugin(Star):
         if match:
             target_id = match.group(1)
                 
-
         if target_id is None:
             yield event.plain_result("请 @ 要禁言的人，例如：/禁言 300 @张三")
             return
