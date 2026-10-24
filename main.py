@@ -15,6 +15,10 @@ class GroupMutePlugin(Star):
         用法：/禁言 <秒数>（需要 @ 某人）
         例：/禁言 300 @张三
         """
+        logger.info(f"message_str: {event.message_str}")
+        logger.info(f"messages: {event.get_messages()}")
+        # 打印原始消息对象
+        logger.info(f"raw: {event.message_obj}")
         # 1. 确认是群聊
         if not event.get_group_id():
             yield event.plain_result("这个指令只能在群聊里用哦～")
