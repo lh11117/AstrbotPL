@@ -78,6 +78,12 @@ class MetroSearch(Star):
     def __init__(self, context: Context):
         super().__init__(context)
 
+    @filter.command("echo")
+    async def echo(self, event: AstrMessageEvent, message: str):
+        yield event.plain_result(f"你发了: {message}")
+
+
+
     @filter.command("查询")
     async def find(self, event: AstrMessageEvent, key: str):
         """
