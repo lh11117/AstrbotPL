@@ -70,3 +70,8 @@ class GroupMutePlugin(Star):
             yield event.plain_result("已解除禁言 ✅")
         except Exception as e:
             yield event.plain_result(f"解禁失败：{e}")
+
+    @filter.command("ping")
+    async def p(self, event: AstrMessageEvent):
+        
+                yield event.plain_result(f"pong")
